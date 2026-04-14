@@ -13,8 +13,8 @@ export default function Editor({ project, onBack }) {
   const [genDone, setGenDone] = useState(project?.status === 'done')
   const [copied, setCopied] = useState(false)
 
-  const imgRef = useRef(); 
-  const vidRef = useRef(); 
+  const imgRef = useRef()
+  const vidRef = useRef()
   const musRef = useRef()
 
   const headers = { Authorization: `Bearer ${token}` }
@@ -28,9 +28,31 @@ export default function Editor({ project, onBack }) {
       })
   }, [])
 
-  // ✅ DOWNLOAD FUNCTION (ADDED)
-  const handleDownload = () => {
-    window.open(`${API}/api/projects/${project.uuid}/download`, '_blank');
+  // ✅ FINAL DOWNLOAD FIX (TOKEN INCLUDED)
+  const handleDownload = async () => {
+    try {
+      const res = await fetch(`${API}/api/projects/${project.uuid}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) throw new Error("Download failed")
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'reel.mp4'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+
+    } catch (err) {
+      console.error(err)
+      alert("Download failed")
+    }
   }
 
   const uploadFile = async (file, type) => {
@@ -78,7 +100,10 @@ export default function Editor({ project, onBack }) {
       setGenProgress(steps[i])
     }
 
-    await fetch(API + `/api/projects/${project.uuid}/generate`, { method: 'POST', headers })
+    await fetch(API + `/api/projects/${project.uuid}/generate`, {
+      method: 'POST',
+      headers
+    })
 
     setGenerating(false)
     setGenDone(true)
@@ -98,17 +123,14 @@ export default function Editor({ project, onBack }) {
     <div className="page">
 
       <div className="page-header">
-        <div>
-          <button className="back-btn" onClick={onBack}>← Back</button>
-          <h1 style={{ marginTop: 6 }}>{project?.name}</h1>
+        <button onClick={onBack}>← Back</button>
+        <h1>{project?.name}</h1>
 
-          <div className="uuid-row">
-            <span className="uuid-label">UUID:</span>
-            <span className="uuid-val">{project?.uuid}</span>
-            <button className="uuid-copy" onClick={copyUUID}>
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
+        <div>
+          UUID: {project?.uuid}
+          <button onClick={copyUUID}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
         </div>
       </div>
 
@@ -118,31 +140,24 @@ export default function Editor({ project, onBack }) {
           { label: 'Video', type: 'video', ref: vidRef, files: vidFiles },
           { label: 'Audio', type: 'audio', ref: musRef, files: musFiles }
         ].map(({ label, type, ref, files: fl }) => (
-          <div key={type} className="upload-box" onClick={() => !uploading && ref.current?.click()}>
+          <div key={type} onClick={() => !uploading && ref.current?.click()}>
             <input type="file" ref={ref} style={{ display: 'none' }} onChange={e => handleFile(e, type)} />
-
             <div>{label}</div>
-
-            {fl.length > 0 && (
-              <div>{fl.length} file{fl.length > 1 ? 's' : ''}</div>
-            )}
+            {fl.length > 0 && <div>{fl.length} file(s)</div>}
           </div>
         ))}
       </div>
 
-      {generating && (
-        <div>
-          Generating... {genProgress}%
-        </div>
-      )}
+      {uploading && <div>Uploading... {uploadProgress}%</div>}
 
-      <div className="actions-row">
+      {generating && <div>Generating... {genProgress}%</div>}
 
-        <button onClick={generateReel}>
+      <div>
+
+        <button onClick={generateReel} disabled={generating || files.length === 0}>
           {generating ? 'Generating...' : 'Generate Reel'}
         </button>
 
-        {/* ✅ FIXED BUTTON */}
         {genDone && (
           <button onClick={handleDownload}>
             Download MP4
