@@ -7,7 +7,8 @@ import './index.css'
 export const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// ✅ UPDATED API URL (IMPORTANT)
+const API = 'https://realforge-backend.onrender.com'
 export { API }
 
 export default function App() {
